@@ -1,0 +1,163 @@
+1、从服务器clone代码到本地   只会拷贝服务器的.git文件夹到本地，代码需要git checkout命令才可以出现
+    git clone ssh://huangxiaofeng@192.168.4.200:29418/neoStore
+2、查看本地有哪些分支
+    git branch 
+3、查看本地和服务器一共有哪些分支
+    git branch -a 
+4、将服务器某个分支的代码同步到本地    如：将remotes/origin/dev分支的代码拷贝为本地的dev分支   dev:可以自己取名字
+    git checkout origin/dev -b dev
+5、一般我们开发有dev,master,releaseX.YY几个分支
+    dev:开发过程中的分支
+    master:代码稳定后，合并dev分支的代码到master,master上必然是稳定代码
+    releaseX.YY:发布到现场的分支 
+7、在提交代码之前查看有哪些修改  会有红色字体列出被删除、修改、增加的文件
+    git status
+8、添加、修改文件
+    git add AndroidManifest.xml src/cn/nubia/trafficcontrol/util/FileUtil.java
+9、删除文件
+    git rm src/cn/nubia/trafficcontrol/util/DataUpload.java
+10、提交上面所有的修改
+    git commit 
+11、将上面所有的修改都push到服务器    dev:本地分支名称    dev:远程服务器分支名称
+    git push origin dev:refs/for/dev
+12、11步完成之后，需要两个评审人在Gerrit上评审代码通过之后，代码才能被同步到远程
+13、将服务器代码拉到本地(在每一次提交之前，需要先将服务器的拉取到本地，否则可能会由于服务器和本地都做了修改而出现代码合并冲突)
+    git pull --rebase
+14、查询所有的使用的命令
+    history
+15、某次被打回后，再次提交需要在上次的版本上提交
+    git commit --amend
+	不abandon代码，你回去之后，修改出问题的Java文件，修改好之后，git add 该出问题.java?
+	然后 git commit --amend --no-edit,?
+	最后 git push origin HEAD:refs/for/develop。
+16、如果想回退到某个版本    89894238542098290:此版本的commit id
+    git reset --soft 89894238542098290
+    //出现一种情况：调用上面的方法将数据还原后，本地做了修改，但是发现本地的修改和服务器上git pull --rebase拉下来的变红，需要add到仓库，此时用此方法
+    //当git push失败后，可以先退出到上次成功push的某次commit，然后会有一些冲突，解完冲突后，继续提交一般能成功
+    git reset --hard 89894238542098290    //用之前将本地备份好，可能会导致本地的数据有一部分丢失
+17、查看提交的commit记录
+    git log   
+18、将本地的修改保存到一个缓冲区
+    git stash
+    (使用场景：当本地代码有修改，使用git pull拉取远程代码有冲突而无法拉取，此命令可以将本地修改缓存起来，然后将服务器的拉取后合并)
+19、18中缓存的数据可能会覆盖本地代码，需要将18中缓存的数据再次显示
+    git stash pop
+20、本地某个文件被修改或者删除了，需要恢复时使用如下命令：
+    git checkout hello.java
+21、默认git clone 是拷贝master分支到本地，而远程master分支上并不是最新的，最新分支一般是dev，需要在本地checkout到dev分支上，如：
+    git checkout -b dev remotes/origin/dev 
+22、当代码有冲突，将GIT服务器的代码拉取到本地后，解决冲突完毕后，分支会切换到某个空分支
+    将本地的冲突解完后，执行git add
+    执行git rebase --continue，将分支切换到dev
+    git push origin dev:refs/for/dev
+    
+23、如果在dev分支提交了最新代码，想同步到Release分支上（注意，首先都是在本地同步）
+    首先在dev分支上git log 查看最新的commit HASH码
+    然后切换到Release分支上
+    然后git cherry-pick XXX(HASH码)，代码即将dev代码同步到Release上了
+    然后可以切换到Release分支上，执行如下命令提交代码到服务器：
+    git add ---然后-----  git commit（dev分支的注释也拷贝过来了，可以不需要修改，直接沿用）--然后--- git push origin Release:refs/for/Release
+    (上面不需要git add和git commit，直接git push即可)
+    注意：与28、29不同的是，这里是同步每次的提交，并不能同步所有的代码，因此如果dev有5次提交打算同步到Release上，需要
+    git cherry-pick XXX1 XXX2 XXX3 XXX4 XXX5，HASH码需要按照时间顺序写
+        
+24、如果发现某个被add的文件不打算提交，撤销办法为：
+    git reset HEAD 文件名
+    撤销所有的文件  git reset HEAD .
+    只是撤销缓存提交，本地代码修改尚未还原。
+25、撤销本地所有的add提交  (有时候会自动add)
+    git reset HEAD
+26、新建一个仓库然后
+    将服务器空仓库拷贝到本地：git clone ssh://huangxiaofeng@192.168.4.200:29418/neoGame 
+    本地在其他目录新建一个Android工程，将其代码拷贝到上面的文件夹目录下
+    git commit，添加注释
+    git branch -a，可以发现本地出现了dev或者master分支
+    提交本地代码到服务器：git push origin dev:dev，会将本地代码提交到服务器，同时在服务器建立了dev分支，此命令与我们提交代码的有所不同
+    git checkout -b master切换到master分支
+    给服务器创建一个master分支：git push origin master:master
+27、如果由于没有添加hook中的钩子commit-msg，导致一次修改会有2份，此时可以将老的一次提交废弃，然后再本次
+    用git log查看changeId和最新一次的changeId是否一致，如果不一致则执行git commit --amend,会发现一致
+    然后执行git push origin dev:refs/for/dev，提交成功
+
+
+28、merge最新代码到master上
+    每次开发完毕，自测后需要将dev最新代码merge到master分支上
+    1.首先切换到master分支：git checkout master
+    2.merge代码到master：git merge origin/dev
+    3.同步到服务器：git push origin master:master
+    然后给master分支打标签
+    1.打标签：git tag -a Baseline-V1.0.0 -m 'apk化最新版本'
+    2.同步到服务器：git push origin Baseline-V1.0.0
+    3.查看标签：git tag
+29、拉取Release分支
+    master分支merge完毕后，需要拉取一个新的Release分支
+    1.将dev代码完整的拷贝到新的Release分支上：git checkout -b Release_V1.0.0（此处包含新建分支和merge代码，master由于一直存在所以不能新建分支，只能merge代码）
+    2.同步到服务器：git push origin Release_V1.0.0:Release_V1.0.0
+    然后给Release分支打标签
+    1.打标签：git tag -a Release-V1.0.0 -m 'apk化最新版本'
+    2.同步到服务器：git push origin Release-V1.0.0
+    3.查看标签：git tag
+    
+    
+30、如果先是A提交了一份代码，然后B又提交了一份代码，但是B没有拉取A提交的代码，导致
+    git commit --amend
+    git push origin dev:refs/for/dev
+    
+    you are in the middle of a merge --can not amend 
+    git stash pop （将所有的缓存弹出）
+    git reset --soft 上一次提交的HASH   （废除本次提交，退回到上次提交）
+	  git status(会发现有拉取的A的代码和自己修改的代码)
+	  git stash(缓存代码)
+	  git pull(关键,用git pull --rebase不行)
+	  git stash pop
+	  解冲突
+	  在Gerrit上废弃B的提交
+	  然后走正常提交流程：
+	  git add 
+	  git commit 
+	  git push origin dev:refs/for/dev
+31、当有很多的stash时，先查看git stash list有哪些stash，会列出如下：
+    stash@{0}: WIP on dev:xxxxx
+    stash@{1}: WIP on dev:xxxxx
+    stash@{2}: WIP on dev:xxxxx    
+    如果想回到某一次： git stash pop stash@{n}
+    如果想全部清掉：git stash clear
+32、git reset --soft与git reset --hard的区别
+    --hard会将commit中的提交重置掉
+    --soft会保留commit提交
+33、如果由于代码不及时pull而导致git push失败，可以用如下方法解决
+    git fetch origin
+    git reset --hard origin/master
+    注意：本地的修改将不会被保留
+
+33、放弃本地修改，更新代码
+    git fetch --all
+    git reset --hard origin/master
+    git pull
+    git fetch 指令是下载远程仓库最新内容，不做合并 
+    git reset 指令把HEAD指向master最新版本
+
+初始化环境变量
+    在code/platform下执行source build/envsetup.sh
+编译当前工程的命令
+    antmake clean debug
+退出编辑器命令
+    :q
+    
+
+    
+    Git Gui也可以使用命令：
+    git pull origin master   将远端的拉到本地
+    git push                 将本地改动提交到远端
+    git add/commit 所有的记录都是在本地，必须git push才会将记录提交到服务器
+
+
+新  
+
+git fetch 拉去远端代码，但是不会覆盖本地修改
+git pull origin master 会覆盖
+
+.ignore
+git rm --cached a.java
+
+mvn dependency > d.txt
